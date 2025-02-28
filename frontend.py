@@ -47,23 +47,6 @@ st.markdown("""
         transform: scale(1.05);
         box-shadow: 0px 0px 25px #00ffcc;
     }
-    .camera-container, .output-container {
-        border: 4px solid #00ffcc;
-        border-radius: 15px;
-        box-shadow: 0px 0px 20px #00ffcc;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 20px;
-        margin-bottom: 20px;
-        height: 450px;
-    }
-    .output-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        font-size: 1.5em;
-    }
     .project-name {
         font-size: 2.5em;
         font-weight: bold;
@@ -82,6 +65,7 @@ st.markdown("""
         padding: 5px 10px;
         background-color: rgba(0, 255, 204, 0.1);
         margin-top: 10px;
+        margin-bottom: 10px;
     }
     .timestamp {
         font-family: 'Courier New', monospace;
@@ -100,6 +84,25 @@ st.markdown("""
         align-items: center;
         border: 1px solid rgba(0, 255, 204, 0.3);
     }
+    .output-display {
+        border: 1px solid rgba(0, 255, 204, 0.3);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(0, 30, 20, 0.5);
+        height: 400px;  /* Increased height */
+        overflow-y: auto;
+    }
+    .output-title {
+        text-align: center;
+        font-size: 1.2em;
+        margin-bottom: 10px;
+        text-shadow: 0px 0px 5px #00ffcc;
+    }
+    .output-content {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        color: #00ffcc;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -115,6 +118,8 @@ if 'captured_image' not in st.session_state:
     st.session_state.captured_image = None
 if 'system_log' not in st.session_state:
     st.session_state.system_log = ["System initialized"]
+if 'output_text' not in st.session_state:
+    st.session_state.output_text = "READY FOR ANALYSIS"
 
 # Functions for camera controls
 def toggle_camera():
@@ -122,24 +127,27 @@ def toggle_camera():
     st.session_state.image_captured = False
     status = "activated" if st.session_state.camera_on else "deactivated"
     st.session_state.system_log.append(f"Camera {status}")
+    if st.session_state.camera_on:
+        st.session_state.output_text = "CAMERA ACTIVE\nAWAITING INPUT"
+    else:
+        st.session_state.output_text = "CAMERA OFFLINE\nSYSTEM STANDBY"
 
 def capture_image():
     if st.session_state.camera_on:
         st.session_state.image_captured = True
         st.session_state.system_log.append("Image captured")
+        st.session_state.output_text = "IMAGE ANALYSIS IN PROGRESS...\n\nPROCESSING...\n\nDETECTING OBJECTS...\n\nANALYSIS COMPLETE."
 
-# Layout with two columns
-col1, col2 = st.columns(2)
+# Main layout with two columns (camera and output)
+col1, col2 = st.columns([2, 1])
 
 # Camera section
 with col1:
-    st.markdown('<div class="camera-container">', unsafe_allow_html=True)
-    
     # Display camera status
     status = "ACTIVE" if st.session_state.camera_on else "INACTIVE"
     st.markdown(f'<div class="system-status">CAMERA STATUS: {status}</div>', unsafe_allow_html=True)
     
-    # Camera display area
+    # Camera display logic
     if st.session_state.camera_on and not st.session_state.image_captured:
         camera_image = st.camera_input("", key="camera", label_visibility="collapsed")
         if camera_image is not None:
@@ -159,44 +167,47 @@ with col1:
     # Display timestamp
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     st.markdown(f'<div class="timestamp">{current_time}</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Camera control buttons
-    st.markdown("### CONTROL PANEL")
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        if st.button("ON/OFF"):
-            toggle_camera()
-    with c2:
-        st.button("VIDEO")
-    with c3:
-        if st.button("CAPTURE"):
-            capture_image()
-    with c4:
-        st.button("AUDIO")
-    with c5:
-        st.button("SETTINGS")
 
-# Output section
+# Output display (now in its own column, to the right of camera)
 with col2:
-    st.markdown('<div class="output-container">', unsafe_allow_html=True)
-    
-    # Show the CAMCOM logo/text
-    st.markdown("<h2>CAMCOM SYSTEM</h2>", unsafe_allow_html=True)
-    
-    # System log section
-    st.markdown("<h3>SYSTEM LOG</h3>", unsafe_allow_html=True)
-    
-    # Display log entries (most recent first)
-    log_entries = ""
-    for entry in reversed(st.session_state.system_log[-8:]):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        log_entries += f"<p style='font-family: monospace; margin: 5px 0; font-size: 0.9em;'>[{timestamp}] {entry}</p>"
-    
-    st.markdown(log_entries, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="output-display">
+            <div class="output-title">OUTPUT</div>
+            <div class="output-content">{st.session_state.output_text.replace('\n', '<br>')}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# System log section below the camera feed
+st.markdown("<h3>SYSTEM LOG</h3>", unsafe_allow_html=True)
+# Display log entries (most recent first)
+for entry in reversed(st.session_state.system_log[-8:]):
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    st.markdown(f"<p style='font-family: monospace; margin: 5px 0; font-size: 0.9em;'>[{timestamp}] {entry}</p>", unsafe_allow_html=True)
+
+# Control panel (now spanning all columns)
+st.markdown("### CONTROL PANEL")
+c1, c2, c3, c4, c5 = st.columns(5)
+with c1:
+    if st.button("ON/OFF"):
+        toggle_camera()
+with c2:
+    if st.button("VIDEO"):
+        st.session_state.system_log.append("Video mode selected")
+        st.session_state.output_text = "VIDEO MODE ENABLED\nRECORDING READY"
+with c3:
+    if st.button("CAPTURE"):
+        capture_image()
+with c4:
+    if st.button("AUDIO"):
+        st.session_state.system_log.append("Audio recording unavailable")
+        st.session_state.output_text = "AUDIO MODULE\nCURRENTLY OFFLINE\nMAINTENANCE REQUIRED"
+with c5:
+    if st.button("SETTINGS"):
+        st.session_state.system_log.append("Settings accessed")
+        st.session_state.output_text = "SETTINGS PANEL\n\nRESOLUTION: 1080p\nFRAME RATE: 30fps\nNIGHT MODE: ENABLED\nAI ASSIST: ACTIVE"
 
 # System footer
 st.markdown(
